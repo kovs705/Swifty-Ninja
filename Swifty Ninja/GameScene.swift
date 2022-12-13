@@ -8,6 +8,10 @@
 import SpriteKit
 import GameplayKit
 
+enum ForceBomb {
+    case never, always, random
+}
+
 class GameScene: SKScene {
     
     var activeSliceBG: SKShapeNode!
@@ -22,6 +26,9 @@ class GameScene: SKScene {
     
     var livesImages = [SKSpriteNode]()
     var lives = 3
+    
+    // store enemies:
+    var activeEnemies = [SKSpriteNode]()
     
     // store swipe points:
     var activeSlicePoints = [CGPoint]()
@@ -84,8 +91,59 @@ class GameScene: SKScene {
         addChild(activeSliceFG)
     }
     
-    // MARK: - Touches and Swipes
+    // MARK: - Enemies:
+    func createEnemy(forceBomb: ForceBomb = .random) {
+        let enemy: SKSpriteNode
+        
+        var enemyType = Int.random(in: 0...6)
+        
+        if forceBomb == .never {
+            enemyType = 1
+        } else if forceBomb == .always {
+            enemyType = 0
+        }
+        
+        if enemyType == 0 {
+            // create a bomb:
+        } else {
+            enemy = SKSpriteNode(imageNamed: "penguin")
+            run(SKAction.playSoundFileNamed("launch.caf", waitForCompletion: false))
+            enemy.name = "enemy"
+        }
+        
+        // create a directory and position for future enemies and bombs:
+        let randomPosition = CGPoint(x: Int.random(in: 64...960), y: -128)
+        enemy.position = randomPosition
+        
+        // speed of the enemies spinning:
+        let randomAngularVelocity = CGFloat.random(in: -3...3)
+        
+        // how far to move horizontally:
+        let randomXVelocity: Int
+        
+        if randomPosition.x < 256 {
+            randomXVelocity = Int.random(in: 9...15)
+        } else if randomPosition.x < 512 {
+            randomXVelocity = Int.random(in: 3...5)
+        } else if randomPosition.x < 768 {
+            randomXVelocity = -Int.random(in: 3...5)
+        } else {
+            randomXVelocity = -Int.random(in: 8...15)
+        }
+        
+        // Make enemies fly higly at different speeds:
+//        let randomYVelocity = Int.random(in: 24...32)
+//        
+//        enemy.physicsBody = SKPhysicsBody(circleOfRadius: 64)
+//        
+        
+        
+        addChild(enemy)
+        activeEnemies.append(enemy)
+        
+    }
     
+    // MARK: - Touches and Swipes
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         
