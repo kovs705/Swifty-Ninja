@@ -6,6 +6,7 @@
 //
 
 import SpriteKit
+import AVFoundation
 import GameplayKit
 
 enum ForceBomb {
@@ -30,6 +31,9 @@ class GameScene: SKScene {
     // store enemies:
     var activeEnemies = [SKSpriteNode]()
     
+    // sound:
+    var bombSoundEffect: AVAudioPlayer?
+    
     // store swipe points:
     var activeSlicePoints = [CGPoint]()
     var isSwooshSoundActive = false
@@ -53,43 +57,25 @@ class GameScene: SKScene {
     }
     
     
-    func createScore() {
-        gameScore = SKLabelNode(fontNamed: "Chalkduster")
-        gameScore.horizontalAlignmentMode = .left
-        gameScore.fontSize = 48
+    // MARK: - update method:
+    override func update(_ currentTime: TimeInterval) {
+        var bombCount = 0
         
-        addChild(gameScore)
-        
-        gameScore.position = CGPoint(x: 8, y: 8)
-        score = 0
-    }
-    
-    func createLives() {
-        for i in 0 ..< 3 {
-            let spriteNode = SKSpriteNode(imageNamed: "sliceLife")
-            spriteNode.position = CGPoint(x: CGFloat(834 + (i * 70)), y: 720)
-            addChild(spriteNode)
-            
-            livesImages.append(spriteNode)
+        for node in activeEnemies {
+            if node.name == "bombContainer" {
+                bombCount += 1
+                break
+            }
         }
+        
+        if bombCount == 0 {
+            // no bombs == stop the fuse sound!
+            bombSoundEffect?.stop()
+            bombSoundEffect = nil
+        }
+        
     }
     
-    func createSlices() {
-        activeSliceBG = SKShapeNode()
-        activeSliceBG.zPosition = 2
-        
-        activeSliceFG = SKShapeNode()
-        activeSliceFG.zPosition = 3
-        
-        activeSliceBG.strokeColor = UIColor(red: 1, green: 0.9, blue: 0, alpha: 1)
-        activeSliceBG.lineWidth = 9
-        
-        activeSliceFG.strokeColor = UIColor.white
-        activeSliceFG.lineWidth = 5
-        
-        addChild(activeSliceBG)
-        addChild(activeSliceFG)
-    }
     
     // MARK: - Enemies:
     func createEnemy(forceBomb: ForceBomb = .random) {
@@ -104,8 +90,41 @@ class GameScene: SKScene {
         }
         
         if enemyType == 0 {
-            // create a bomb:
+            // MARK: create a bomb:
+            
+            //1
+            enemy = SKSpriteNode()
+            enemy.zPosition = 1
+            enemy.name = "bombContainer"
+            
+            // 2
+            let bombImage = SKSpriteNode(imageNamed: "sliceBomb")
+            bombImage.name = "bomb"
+            enemy.addChild(bombImage)
+            
+            // 3
+            if bombSoundEffect != nil {
+                bombSoundEffect?.stop()
+                bombSoundEffect = nil
+            }
+            
+            // 4
+            if let path = Bundle.main.url(forResource: "sliceBombFuse", withExtension: "caf") {
+                if let sound = try? AVAudioPlayer(contentsOf: path) {
+                    bombSoundEffect = sound
+                    sound.play()
+                }
+            }
+            
+            // 5
+            if let emitter = SKEmitterNode(fileNamed: "sliceFuse") {
+                emitter.position = CGPoint(x: 76, y: 64)
+                enemy.addChild(emitter)
+            }
+            
         } else {
+            
+            // MARK: - create a penguin:
             enemy = SKSpriteNode(imageNamed: "penguin")
             run(SKAction.playSoundFileNamed("launch.caf", waitForCompletion: false))
             enemy.name = "enemy"
@@ -132,16 +151,62 @@ class GameScene: SKScene {
         }
         
         // Make enemies fly higly at different speeds:
-//        let randomYVelocity = Int.random(in: 24...32)
-//        
-//        enemy.physicsBody = SKPhysicsBody(circleOfRadius: 64)
-//        
+        let randomYVelocity = Int.random(in: 24...32)
         
+        // Give every enemy a physics of the ball and delete the abillity to collide:
+        enemy.physicsBody = SKPhysicsBody(circleOfRadius: 64)
+        
+        enemy.physicsBody?.velocity = CGVector(dx: randomXVelocity * 40, dy: randomYVelocity * 40)
+        enemy.physicsBody?.angularVelocity = randomAngularVelocity
+        
+        enemy.physicsBody?.collisionBitMask = 0
         
         addChild(enemy)
         activeEnemies.append(enemy)
         
     }
+    
+    // MARK: - createScore
+    func createScore() {
+        gameScore = SKLabelNode(fontNamed: "Chalkduster")
+        gameScore.horizontalAlignmentMode = .left
+        gameScore.fontSize = 48
+        
+        addChild(gameScore)
+        
+        gameScore.position = CGPoint(x: 8, y: 8)
+        score = 0
+    }
+    
+    // MARK: - createLives
+    func createLives() {
+        for i in 0 ..< 3 {
+            let spriteNode = SKSpriteNode(imageNamed: "sliceLife")
+            spriteNode.position = CGPoint(x: CGFloat(834 + (i * 70)), y: 720)
+            addChild(spriteNode)
+            
+            livesImages.append(spriteNode)
+        }
+    }
+    
+    // MARK: - createSlices
+    func createSlices() {
+        activeSliceBG = SKShapeNode()
+        activeSliceBG.zPosition = 2
+        
+        activeSliceFG = SKShapeNode()
+        activeSliceFG.zPosition = 3
+        
+        activeSliceBG.strokeColor = UIColor(red: 1, green: 0.9, blue: 0, alpha: 1)
+        activeSliceBG.lineWidth = 9
+        
+        activeSliceFG.strokeColor = UIColor.white
+        activeSliceFG.lineWidth = 5
+        
+        addChild(activeSliceBG)
+        addChild(activeSliceFG)
+    }
+    
     
     // MARK: - Touches and Swipes
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
