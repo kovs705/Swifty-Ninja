@@ -9,12 +9,25 @@ import SpriteKit
 import AVFoundation
 import GameplayKit
 
+enum SequenceType: CaseIterable {
+    case oneNoBomb, one, twoWithOneBomb, two, three, four, chain, fastChain
+}
+
 enum ForceBomb {
     case never, always, random
 }
 
+// MARK: - GameScene
 class GameScene: SKScene {
     
+    // MARK: - properties for sequence:
+    var popupTime = 0.9
+    var sequence = [SequenceType]()
+    var sequencePosition = 0      // where are we right now in the game
+    var chainDelay = 3.0          // how long to wait before the new enemy creation
+    var nextSequenceQueued = true // property to know when all enemies are destroyed and we're ready to reate more
+    
+    // MARK: - other properties
     var activeSliceBG: SKShapeNode!
     var activeSliceFG: SKShapeNode!
     
@@ -54,6 +67,20 @@ class GameScene: SKScene {
         createScore()
         createLives()
         createSlices()
+        
+        // MARK: - Sequence
+        sequence = [.oneNoBomb, .oneNoBomb, .twoWithOneBomb, .twoWithOneBomb, .three, .one, .chain]
+        
+        for _ in 0 ... 1000 { // ... means up to and including (so it can be 1001, 1002..
+            if let nextSequence = SequenceType.allCases.randomElement() {
+                sequence.append(nextSequence)
+            }
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            self?.tossEnemies()
+        }
+        
     }
     
     
@@ -284,6 +311,86 @@ class GameScene: SKScene {
         run(swooshSound) { [weak self] in
             self?.isSwooshSoundActive = false
         }
+    }
+    
+    // MARK: - Enemies and Bombs
+    func tossEnemies() {
+        popupTime *= 0.991 // get's faster
+        chainDelay *= 0.99 // delay between enemies in the chain
+        physicsWorld.speed *= 1.02
+        
+        let sequenceType = sequence[sequencePosition]
+        
+        switch sequenceType {
+            
+        case .oneNoBomb:
+            createEnemy(forceBomb: .never)
+            
+        case .one:
+            createEnemy()
+            
+        case .twoWithOneBomb:
+            createEnemy(forceBomb: .never)
+            createEnemy(forceBomb: .always)
+            
+        case .two:
+            createEnemy()
+            createEnemy()
+            
+        case .three:
+            createEnemy()
+            createEnemy()
+            createEnemy()
+            
+        case .four:
+            createEnemy()
+            createEnemy()
+            createEnemy()
+            createEnemy()
+            
+        case .chain:
+            createEnemy()
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + (chainDelay / 5.0)) { [weak self] in
+                self?.createEnemy()
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + (chainDelay / 5.0 * 2)) { [weak self] in
+                self?.createEnemy()
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + (chainDelay / 5.0 * 3)) { [weak self] in
+                self?.createEnemy()
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + (chainDelay / 5.0 * 4)) { [weak self] in
+                self?.createEnemy()
+            }
+            
+        case .fastChain:
+            createEnemy()
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + (chainDelay / 10.0)) { [weak self] in
+                self?.createEnemy()
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + (chainDelay / 10.0 * 2)) { [weak self] in
+                self?.createEnemy()
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + (chainDelay / 10.0 * 3)) { [weak self] in
+                self?.createEnemy()
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + (chainDelay / 10.0 * 4)) { [weak self] in
+                self?.createEnemy()
+            }
+            
+        } // end of switch
+        
+        sequencePosition += 1
+        nextSequenceQueued = false
+        
     }
     
 }
