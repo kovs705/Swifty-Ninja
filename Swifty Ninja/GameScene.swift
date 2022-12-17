@@ -38,6 +38,8 @@ class GameScene: SKScene {
         }
     }
     
+    var isGameEnded = false
+    
     var livesImages = [SKSpriteNode]()
     var lives = 3
     
@@ -91,7 +93,21 @@ class GameScene: SKScene {
         if activeEnemies.count > 0 {
             for (index, node) in activeEnemies.enumerated().reversed() {
                 if node.position.y < -140 {
-                    activeEnemies.remove(at: index)
+                    node.removeAllActions()
+                    
+                    if node.name == "enemy" {
+                        node.name = ""
+                        substractLife()
+                        
+                        node.removeFromParent()
+                        activeEnemies.remove(at: index)
+                    } else if node.name == "bombContainer" {
+                        node.name = ""
+                        node.removeFromParent()
+                        activeEnemies.remove(at: index)
+                    }
+                    
+                    
                 }
             }
         } else { // if it's less or equals 0
@@ -275,6 +291,11 @@ class GameScene: SKScene {
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        
+        if isGameEnded {
+            return
+        }
+        
         guard let touch = touches.first else { return }
         
         let location = touch.location(in: self)
@@ -345,6 +366,11 @@ class GameScene: SKScene {
     
     // MARK: - Enemies and Bombs
     func tossEnemies() {
+        
+        if isGameEnded {
+            return
+        }
+        
         popupTime *= 0.991 // get's faster
         chainDelay *= 0.99 // delay between enemies in the chain
         physicsWorld.speed *= 1.02
@@ -487,6 +513,48 @@ class GameScene: SKScene {
     
     // MARK: - Game Over
     func endGame(triggeredByBomb: Bool) {
+        if isGameEnded {
+            return
+        }
+        
+        isGameEnded = true
+        physicsWorld.speed = 0
+        isUserInteractionEnabled = false
+        
+        bombSoundEffect?.stop()
+        bombSoundEffect = nil
+        
+        if triggeredByBomb {
+            livesImages[0].texture = SKTexture(imageNamed: "sliceLifeGone")
+            livesImages[1].texture = SKTexture(imageNamed: "sliceLifeGone")
+            livesImages[2].texture = SKTexture(imageNamed: "sliceLifeGone")
+        }
+    }
+    
+    // MARK: - Substract life
+    func substractLife() {
+        lives -= 1
+        
+        run(SKAction.playSoundFileNamed("wrong.caf", waitForCompletion: false))
+        
+        var life: SKSpriteNode
+        
+        if lives == 2 {
+            life = livesImages[0]
+        } else if lives == 1 {
+            life = livesImages[1]
+        } else {
+            life = livesImages[2]
+            endGame(triggeredByBomb: false)
+        }
+        
+        life.texture = SKTexture(imageNamed: "sliceLifeGone")
+        
+        life.xScale = 1.3
+        life.yScale = 1.3
+        
+        // and go the scale back to normal:
+        run(SKAction.scale(to: 1, duration: 0.1))
         
     }
     
